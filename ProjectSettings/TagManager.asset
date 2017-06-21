@@ -11,6 +11,8 @@ TagManager:
   - FadePanel
   - DirectionBonus
   - TimeBonus
+  - AllowedArea
+  - PickUp
   layers:
   - Default
   - TransparentFX

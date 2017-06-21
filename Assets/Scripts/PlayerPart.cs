@@ -55,7 +55,32 @@ public class PlayerPart : MonoBehaviour {
 				playerController.CollisionHappened ();
 				break;
 
-			case "Target":
+            case "AllowedArea":
+
+                print("New Platform Arrived");
+                gameplayController.moving = true;
+                playerController.ArrivedOnPlatform(trigger.gameObject);
+                if(trigger.gameObject.GetComponent<PlatformInfo>().isExist)
+                {
+                    switch (trigger.gameObject.GetComponent<PlatformInfo>().PickUp.tag)
+                    {
+                        case "Target":
+                            print("Stage Completed!");
+                            break;
+
+                        case "PickUp":
+                            print("PickUp catched up!");
+                            break;
+
+                        default:
+                            trigger.gameObject.GetComponent<PlatformInfo>().PickUp.SetActive(false);
+                            break;
+                    }
+                    trigger.gameObject.GetComponent<PlatformInfo>().PickUp.SetActive(false);
+                }
+                break;
+
+            case "Target":
 				
 				print ("Stage Completed!");
 				trigger.gameObject.SetActive (false);
@@ -64,7 +89,15 @@ public class PlayerPart : MonoBehaviour {
 				cameraController.MoveCamera ();
 				break;
 
-			case "DirectionBonus":
+            case "PickUp":
+                print("PickUp catched up!");
+                trigger.gameObject.SetActive(false);
+                gameplayController.moving = true;
+                playerController.ArrivedOnPlatform(trigger.gameObject.GetComponent<PickUpInfo>().ParentPlatform);
+                cameraController.MoveCamera();
+                break;
+
+            case "DirectionBonus":
 
 				print ("Direction Bonus!");
 				playerController.PartsBouns (trigger.gameObject.GetComponent<DirectionBonus> ().directionsToAdd);
