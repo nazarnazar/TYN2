@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// Gameplay controller.
@@ -11,6 +12,10 @@ using UnityEngine;
 
 public class GameplayController : MonoBehaviour {
 
+	public Text timeText;
+	public Text directionsText;
+	public Text livesText;
+
 	public PlayerController playerController;	// use to pause player control
 
 	public Stage[] stage;		// stages that we have on one level
@@ -20,14 +25,11 @@ public class GameplayController : MonoBehaviour {
 
 	bool pause = true;			// is our game paused
 	bool timeOver = false;		// is our time overed
-
 	bool fakeReset = false;		// reset is going to be fake when 'true'
-
 	public bool moving = false;	// player doing some coroutine
-
 	string status;				// game status (playing, won, lost)
 
-	bool restarted = true;		// we can't begin game if there was no restart
+	float oneSecond = 1f;
 
 	void Start ()
 	{
@@ -35,6 +37,9 @@ public class GameplayController : MonoBehaviour {
 		stageCounter = 0;
 		currentStageTimer = stage [stageCounter].GetStageTimer ();
 		lives = stage [stageCounter].GetStageLives ();
+
+		timeText.text = "" + Mathf.RoundToInt(currentStageTimer);
+		livesText.text = "" + lives;
 	}
 
 	void Update ()
@@ -42,6 +47,13 @@ public class GameplayController : MonoBehaviour {
 		if (!pause && !timeOver && !moving)		// if 'true' then the time is running
 		{
 			currentStageTimer -= Time.deltaTime;
+			oneSecond -= Time.deltaTime;
+
+			if (oneSecond <= 0)
+			{
+				timeText.text = "" + Mathf.RoundToInt (currentStageTimer);
+				oneSecond = 1f;
+			}
 			if (currentStageTimer <= 0)			// if time is over, we need to simulate collision and make MinusLife()
 			{
 				print ("Minus life!");
@@ -79,7 +91,7 @@ public class GameplayController : MonoBehaviour {
 		if (stageCounter >= stage.Length)
 		{
 			print ("You won!");
-			status = "YouWon!";
+			status = "Won!";
 			pause = true;
 			playerController.PauseGame = true;
 		} 
@@ -102,10 +114,11 @@ public class GameplayController : MonoBehaviour {
 		}
 
 		lives--;
+		livesText.text = "" + lives;
 		if (lives == 0)
 		{
 			print ("Game Over!");
-			status = "GameOver!";
+			status = "Lost!";
 			pause = true;
 			playerController.PauseGame = true;
 		}
@@ -124,29 +137,19 @@ public class GameplayController : MonoBehaviour {
 		fakeReset = true;
 	}
 
-	void OnGUI()
+	public void UnPause()
 	{
-		GUI.skin.label.fontSize = 40;
-		GUI.skin.button.fontSize = 40;
+		pause = false;
+		stage [stageCounter].BeginMovingObstacles ();
+	}
 
-		GUI.Label (new Rect (10, 10, 200, 50), "Time: " + Mathf.RoundToInt (currentStageTimer));
-		GUI.Label (new Rect (10, 60, 200, 50), "Lives: " + lives);
+	public void RestartGame()
+	{
+		Application.LoadLevel (0);
+	}
 
-		GUI.Label (new Rect (10, 160, 400, 50), "Status: " + status);
-
-		if (GUI.Button (new Rect (10, 230, 150, 50), "Restart"))
-			Application.LoadLevel (0);
-		
-		if (GUI.Button (new Rect (170, 230, 150, 50), "Begin"))
-		{
-			if (pause && playerController.PauseGame && restarted)
-			{
-				restarted = false;
-
-				playerController.PauseGame = false;
-				pause = false;
-				stage [stageCounter].BeginMovingObstacles ();
-			}
-		}
+	public void SetDirectionText(int dirs)
+	{
+		directionsText.text = "" + dirs;
 	}
 }

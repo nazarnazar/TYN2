@@ -70,11 +70,15 @@ public class PlayerController : MonoBehaviour {
 		get { return pauseGame;}
 		set { pauseGame = value;}
 	}
+
+	bool startGame;		// var to control game start
+
  
 	// Use this for initialization
 	void Start () {
 
-		PauseGame = true;	// we need to click Begin button to unpause the game
+		PauseGame = false;
+		startGame = false;
 
 		StartInstantiate ();	// spawning unactive parts to activate them later
 
@@ -96,6 +100,8 @@ public class PlayerController : MonoBehaviour {
 		starter = true;
 		lastRoutine = null;
 		reverseCoroutineIsOn = false;
+
+		gameplayController.SetDirectionText (currentNumberOfParts);
 	}
 	
 	// Update is called once per frame
@@ -159,6 +165,12 @@ public class PlayerController : MonoBehaviour {
 
 			if (swiper == SwipeState.right || Input.GetKeyDown (KeyCode.RightArrow)) {	// our next direction
 
+				if (!startGame)
+				{
+					startGame = true;
+					gameplayController.UnPause ();
+				}
+
 				swiper = SwipeState.noSwipe;
 				doNothing = false;
 				goReverse = false;
@@ -199,6 +211,12 @@ public class PlayerController : MonoBehaviour {
 				Movement (DirectionStates.right, -90);		// function to calculate movement direction of spawned part
 
 			} else if (swiper == SwipeState.left || Input.GetKeyDown (KeyCode.LeftArrow)) {
+
+				if (!startGame)
+				{
+					startGame = true;
+					gameplayController.UnPause ();
+				}
 
 				swiper = SwipeState.noSwipe;
 				doNothing = false;
@@ -241,6 +259,12 @@ public class PlayerController : MonoBehaviour {
 
 			} else if (swiper == SwipeState.up || Input.GetKeyDown (KeyCode.UpArrow)) {
 
+				if (!startGame)
+				{
+					startGame = true;
+					gameplayController.UnPause ();
+				}
+
 				swiper = SwipeState.noSwipe;
 				doNothing = false;
 				goReverse = false;
@@ -281,6 +305,12 @@ public class PlayerController : MonoBehaviour {
 				Movement (DirectionStates.up, 0);
 
 			} else if (swiper == SwipeState.down || Input.GetKeyDown (KeyCode.DownArrow)) {
+
+				if (!startGame)
+				{
+					startGame = true;
+					gameplayController.UnPause ();
+				}
 
 				swiper = SwipeState.noSwipe;
 				doNothing = false;
@@ -323,6 +353,8 @@ public class PlayerController : MonoBehaviour {
 
 			}
 		}
+
+		gameplayController.SetDirectionText (currentNumberOfParts - partIndex);		// not best place..
 	}
 
 
@@ -603,15 +635,5 @@ public class PlayerController : MonoBehaviour {
 			gameplayController.moving = false;
 			OnRestart ();
 		}
-	}
-
-	// temp user interface that updates once per couple frames
-	void OnGUI() {
-
-		GUI.skin.label.fontSize = 40;
-
-		GUI.Box (new Rect (0, 0, 350, 300), "");
-
-		GUI.Label (new Rect (10, 110, 200, 50), "Turns: " + (currentNumberOfParts - partIndex));
 	}
 }
