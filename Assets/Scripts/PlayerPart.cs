@@ -46,7 +46,7 @@ public class PlayerPart : MonoBehaviour {
 
 		switch (trigger.gameObject.tag)			// decide what to do, depending on what we have triggered
 		{
-			case "Obstacle": 
+			case "Obstacle": //Also a tag for lower part of platform
 				
 				print ("Minus life!");
 				gameplayController.MinusLife ();
@@ -55,21 +55,24 @@ public class PlayerPart : MonoBehaviour {
 				playerController.CollisionHappened ();
 				break;
 
-            case "AllowedArea":
+            case "AllowedArea": // A tag for top part of platform
 
                 print("New Platform Arrived");
                 gameplayController.moving = true;
                 playerController.ArrivedOnPlatform(trigger.gameObject);
-                if(trigger.gameObject.GetComponent<PlatformInfo>().isExist)
+                if(trigger.gameObject.GetComponent<PlatformInfo>().isExist) // if this platform has any pikup on it
                 {
                     switch (trigger.gameObject.GetComponent<PlatformInfo>().PickUp.tag)
                     {
-                        case "Target":
+                        case "Target": //final pickup that is necessary for passing the stage
                             print("Stage Completed!");
+                            playerController.VictoryHappened();
+                            cameraController.MoveCamera();
                             break;
 
                         case "PickUp":
                             print("PickUp catched up!");
+                            cameraController.MoveCamera();
                             break;
 
                         default:
@@ -80,9 +83,9 @@ public class PlayerPart : MonoBehaviour {
                 }
                 break;
 
-            case "Target":
-				
-				print ("Stage Completed!");
+            case "Target": //final pickup that is necessary for passing the stages
+
+                print ("Stage Completed!");
 				trigger.gameObject.SetActive (false);
 				gameplayController.moving = true;
 				playerController.VictoryHappened ();

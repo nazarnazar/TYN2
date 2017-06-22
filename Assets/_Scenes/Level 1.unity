@@ -1924,7 +1924,7 @@ GameObject:
   - component: {fileID: 1981921412}
   - component: {fileID: 1981921413}
   m_Layer: 0
-  m_Name: Camera Border
+  m_Name: Camera Boarder
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1951,11 +1951,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 1981921411}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 29b00320b2cea3f4d883e720b34ebc07, type: 3}
+  m_Script: {fileID: 11500000, guid: dea95ab0d30b8f349a904b112fe87e74, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  colDepth: 4
-  zPosition: 0
 --- !u!1 &2020589058
 GameObject:
   m_ObjectHideFlags: 0
