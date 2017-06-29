@@ -12,11 +12,15 @@ using UnityEngine.UI;
 
 public class GameplayController : MonoBehaviour {
 
+    public GameObject minusLifeFadePanel;
+    public UIGameOverPanel gameOverPanel;
+    public Text gameOverText;
+
 	public Text timeText;
 	public Text directionsText;
-	public Text livesText;
 
 	public PlayerController playerController;	// use to pause player control
+    public UILivesController livesController;
 
 	public Stage[] stage;		// stages that we have on one level
 	int stageCounter;			// stages counter
@@ -38,8 +42,7 @@ public class GameplayController : MonoBehaviour {
 		currentStageTimer = stage [stageCounter].GetStageTimer ();
 		lives = stage [stageCounter].GetStageLives ();
 
-		timeText.text = "" + Mathf.RoundToInt(currentStageTimer);
-		livesText.text = "" + lives;
+        SetTimeText();
 	}
 
 	void Update ()
@@ -51,7 +54,7 @@ public class GameplayController : MonoBehaviour {
 
 			if (oneSecond <= 0)
 			{
-				timeText.text = "" + Mathf.RoundToInt (currentStageTimer);
+                SetTimeText();
 				oneSecond = 1f;
 			}
 			if (currentStageTimer <= 0)			// if time is over, we need to simulate collision and make MinusLife()
@@ -82,22 +85,33 @@ public class GameplayController : MonoBehaviour {
 			stage [stageCounter].ResetTimeBonuses ();
 			currentStageTimer = stage [stageCounter].GetStageTimer ();
 			timeOver = false;
-		}
+            SetTimeText();
+        }
 	}
 
 	public void NextStage()	// going to the next stage
 	{
-		stageCounter++;
-		if (stageCounter >= stage.Length)
-		{
-			print ("You won!");
-			status = "Won!";
-			pause = true;
-			playerController.PauseGame = true;
-		} 
-		else
-			currentStageTimer = stage [stageCounter].GetStageTimer ();
-	}
+        stage[stageCounter].StopMovingObstacles();
+        stageCounter++;
+        if (stageCounter >= stage.Length)
+        {
+            print("You won!");
+            status = "Won!";
+            pause = true;
+            playerController.PauseGame = true;
+            gameOverPanel.MovePanelIn(true, lives);
+            gameOverText.text = "Well Done";
+        }
+        else
+        {
+            StartCoroutine(FindObjectOfType<UILittleHeadMovement>().MoveMiniHead());
+            currentStageTimer = stage[stageCounter].GetStageTimer();
+        }
+
+        pause = true;
+        playerController.SetStartGame();
+        SetTimeText();
+    }
 
 	public void AddTime(float time)		// we get time bonus, so we add time
 	{
@@ -106,7 +120,10 @@ public class GameplayController : MonoBehaviour {
 
 	public void MinusLife()			// we get minus life, when we collide with dangerous obstacle or we have no time left
 	{
-		if (fakeReset)
+        minusLifeFadePanel.SetActive(true);
+        StartCoroutine(minusLifeFadePanel.GetComponent<FadeController>().FadeInPanel(1f, new Color(1f, 0f, 0f, 0f)));
+
+        if (fakeReset)
 		{
 			fakeReset = false;
 			StageRestart ();
@@ -114,22 +131,29 @@ public class GameplayController : MonoBehaviour {
 		}
 
 		lives--;
-		livesText.text = "" + lives;
+        livesController.MinusHeart();
 		if (lives == 0)
 		{
 			print ("Game Over!");
 			status = "Lost!";
 			pause = true;
 			playerController.PauseGame = true;
-		}
-	}
+            stage[stageCounter].StopMovingObstacles();
+            gameOverPanel.MovePanelIn();
+            gameOverText.text = "Try Again";
+        }
 
-	public int StageStartPartsNumber()		// returns start parts number we can spawn on current stage
+        playerController.MovePlayerToStart();
+        pause = true;
+        playerController.SetStartGame();
+    }
+
+	public int StageStartPartsNumber(int mayBeLast)		// returns start parts number we can spawn on current stage
 	{
 		if (stageCounter < stage.Length)
 			return stage [stageCounter].startPartsNumber;
 		else
-			return 0;
+			return mayBeLast;
 	}
 
 	public void SetFakeReset()		// next reset will be fake
@@ -137,19 +161,36 @@ public class GameplayController : MonoBehaviour {
 		fakeReset = true;
 	}
 
+    public void UnsetFakeReset()
+    {
+        fakeReset = false;
+    }
+
 	public void UnPause()
 	{
 		pause = false;
-		stage [stageCounter].BeginMovingObstacles ();
-	}
+        playerController.pauseGame = false;
+        // stage [stageCounter].BeginMovingObstacles ();
+    }
 
-	public void RestartGame()
+    public void Pause()
+    {
+        pause = true;
+        playerController.pauseGame = true;
+    }
+
+	public void RestartGame(string level)
 	{
-		Application.LoadLevel (0);
+        Application.LoadLevel(level);
 	}
 
 	public void SetDirectionText(int dirs)
 	{
 		directionsText.text = "" + dirs;
 	}
+
+    void SetTimeText()
+    {
+        timeText.text = ":" + Mathf.RoundToInt(currentStageTimer);
+    }
 }

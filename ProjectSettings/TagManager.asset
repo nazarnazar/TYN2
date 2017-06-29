@@ -11,6 +11,10 @@ TagManager:
   - FadePanel
   - DirectionBonus
   - TimeBonus
+  - Platform
+  - ObstacleBoxDestroyer
+  - MinusLifeFadePanel
+  - Environment
   layers:
   - Default
   - TransparentFX

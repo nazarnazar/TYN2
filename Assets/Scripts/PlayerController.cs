@@ -11,20 +11,26 @@ using System.Collections.Generic;
 
 public class PlayerController : MonoBehaviour {
 
+    public GameObject Environment;
+    EnvironmentScaler environmentScaler;
 	public GameplayController gameplayController;	// variable to reset stage or level, pause the game
-
+    public TurnsPanel turnsPanel;
 	public GameObject fadePanel;			// fade in panel when you capture the target
 
 	public GameObject head;					// players head
-	public Vector2 []nextPlatformPosition;	// position of the target platform
-	int platformCounter;
+	// public Vector2 []nextPlatformPosition;	// position of the target platform
+	// int platformCounter;
+    Vector2 nextPlatformPosition;
 
 	public float speed;				// normal palyer scale speed
 	public float secondSpeed;		// fast transition speed
 	public float offset;			// player part spawning offset
 	public GameObject playerPart;	// single part of the player
+    public GameObject playerTurnPart;
 
-	public Vector2 currentPlatformPosition;	// position of the current platform
+    public Vector2 currentPlatformPosition;	// position of the current platform
+    Vector2 startPlatformPosition;
+	public float platformOffset;
 	bool starter;							// is it first player part to spawn
 
 	Vector3 previousPosition;		// previous player part position
@@ -36,6 +42,9 @@ public class PlayerController : MonoBehaviour {
 	int tempPartIndex;					// temp part index to move body 'tail' in MovePlayerToNextPLatform()
     List<GameObject> parts = new List<GameObject>();		// list to search for parts
 	GameObject part;				                        // variable to work with one part
+    List<GameObject> turnParts = new List<GameObject>();
+    GameObject turnPart;
+    int turnPartIndex;
 
 	enum DirectionStates : byte {	// previous direction; need it to decide where to spawn next part
 		right,
@@ -72,43 +81,65 @@ public class PlayerController : MonoBehaviour {
 	}
 
 	bool startGame;		// var to control game start
+    bool middlePlatform;
 
  
 	// Use this for initialization
 	void Start () {
 
+        environmentScaler = Environment.GetComponent<EnvironmentScaler>();
+
+        startPlatformPosition = currentPlatformPosition;
+
 		PauseGame = false;
 		startGame = false;
+        middlePlatform = false;
 
 		StartInstantiate ();	// spawning unactive parts to activate them later
+        StartTurnPartsInstantiate();
 
 		swiper = SwipeState.noSwipe;	// no swipes at the beginning
 		minDrag = Screen.height * 10 / 100;	// min drag screen percent to say it's a swipe
 
-		platformCounter = 0;
-
 		OnRestart ();
 
 		head = Instantiate (head);
-		head.transform.position = new Vector3 (currentPlatformPosition.x, currentPlatformPosition.y + 1f, -1);	// instantiating the head at the start point
+        head.transform.localScale = new Vector3(head.transform.localScale.x * environmentScaler.resolutionFactor, head.transform.localScale.y * environmentScaler.resolutionFactor, head.transform.localScale.z);
+        head.transform.SetParent(Environment.transform);
+		head.transform.localPosition = new Vector3 (currentPlatformPosition.x, currentPlatformPosition.y + platformOffset, -1);	// instantiating the head at the start point
 	}
 
 	void OnRestart() {		// basic resets
 
-		currentNumberOfParts = gameplayController.StageStartPartsNumber ();	// each level stage has its own start number of parts you can spawn
+		currentNumberOfParts = gameplayController.StageStartPartsNumber (currentNumberOfParts - partIndex);	// each level stage has its own start number of parts you can spawn
+
 		partIndex = 0;
+        turnPartIndex = 0;
 		starter = true;
 		lastRoutine = null;
 		reverseCoroutineIsOn = false;
+        middlePlatform = false;
 
 		gameplayController.SetDirectionText (currentNumberOfParts);
 	}
+
+    void OnFakeRestart()
+    {
+        currentNumberOfParts -= partIndex;
+
+        partIndex = 0;
+        turnPartIndex = 0;
+        starter = true;
+        lastRoutine = null;
+        reverseCoroutineIsOn = false;
+
+        gameplayController.SetDirectionText(currentNumberOfParts);
+    }
 	
-	// Update is called once per frame
 	void Update () {
 
-		if (reverseCoroutineIsOn || PauseGame) {
-			return;
+        if (reverseCoroutineIsOn || PauseGame) {
+            return;
 		} else if (partIndex > currentNumberOfParts - 1) {
 			print ("No more parts!");
 			return;
@@ -186,11 +217,14 @@ public class PlayerController : MonoBehaviour {
 
 					case DirectionStates.up:
 						spawner = new Vector3 (previousPosition.x + offset, previousPosition.y + part.transform.localScale.y - offset, previousPosition.z);
-						break;
+                            Debug.Log(head.transform.position);
+                            PlaceTurnBodyPart(DirectionStates.up, DirectionStates.right);
+                        break;
 
 					case DirectionStates.down:
 						spawner = new Vector3 (previousPosition.x + offset, previousPosition.y - part.transform.localScale.y + offset, previousPosition.z);
-						break;
+                        PlaceTurnBodyPart(DirectionStates.down, DirectionStates.right);
+                        break;
 
 					case DirectionStates.left:
 						goReverse = true;
@@ -208,7 +242,7 @@ public class PlayerController : MonoBehaviour {
 					}
 				}
 
-				Movement (DirectionStates.right, -90);		// function to calculate movement direction of spawned part
+                Movement (DirectionStates.right, -90);		// function to calculate movement direction of spawned part
 
 			} else if (swiper == SwipeState.left || Input.GetKeyDown (KeyCode.LeftArrow)) {
 
@@ -233,11 +267,13 @@ public class PlayerController : MonoBehaviour {
 
 					case DirectionStates.up:
 						spawner = new Vector3 (previousPosition.x - offset, previousPosition.y + part.transform.localScale.y - offset, previousPosition.z);
-						break;
+                        PlaceTurnBodyPart(DirectionStates.up, DirectionStates.left);
+                        break;
 
 					case DirectionStates.down:
 						spawner = new Vector3 (previousPosition.x - offset, previousPosition.y - part.transform.localScale.y + offset, previousPosition.z);
-						break;
+                        PlaceTurnBodyPart(DirectionStates.down, DirectionStates.left);
+                        break;
 
 					case DirectionStates.left:
 						doNothing = true;
@@ -288,11 +324,13 @@ public class PlayerController : MonoBehaviour {
 
 					case DirectionStates.left:
 						spawner = new Vector3 (previousPosition.x - part.transform.localScale.y + offset, previousPosition.y + offset, previousPosition.z);
-						break;
+                        PlaceTurnBodyPart(DirectionStates.left, DirectionStates.up);
+                        break;
 
 					case DirectionStates.right:
 						spawner = new Vector3 (previousPosition.x + part.transform.localScale.y - offset, previousPosition.y + offset, previousPosition.z);
-						break;
+                        PlaceTurnBodyPart(DirectionStates.right, DirectionStates.up);
+                        break;
 					}
 
 					if (!doNothing && !goReverse) {
@@ -335,11 +373,13 @@ public class PlayerController : MonoBehaviour {
 
 					case DirectionStates.left:
 						spawner = new Vector3 (previousPosition.x - part.transform.localScale.y + offset, previousPosition.y - offset, previousPosition.z);
-						break;
+                        PlaceTurnBodyPart(DirectionStates.left, DirectionStates.down);
+                        break;
 
 					case DirectionStates.right:
 						spawner = new Vector3 (previousPosition.x + part.transform.localScale.y - offset, previousPosition.y - offset, previousPosition.z);
-						break;
+                        PlaceTurnBodyPart(DirectionStates.right, DirectionStates.down);
+                        break;
 					}
 
 					if (!doNothing && !goReverse) {
@@ -354,8 +394,9 @@ public class PlayerController : MonoBehaviour {
 			}
 		}
 
-		gameplayController.SetDirectionText (currentNumberOfParts - partIndex);		// not best place..
-	}
+        gameplayController.SetDirectionText(currentNumberOfParts - partIndex);		// not best place..
+        turnsPanel.ActivateTurnsPanel(currentNumberOfParts - partIndex);
+    }
 
 
 	// additional private functions
@@ -364,28 +405,42 @@ public class PlayerController : MonoBehaviour {
 
 		for (int i = 0; i < maxNumberOfParts; i++) {
 			GameObject tempPart = Instantiate (playerPart);
+            tempPart.transform.localScale = new Vector3(tempPart.transform.localScale.x * environmentScaler.resolutionFactor, tempPart.transform.localScale.y * environmentScaler.resolutionFactor, tempPart.transform.localScale.z);
+            tempPart.transform.SetParent(Environment.transform);
 			tempPart.SetActive (false);
 			parts.Add (tempPart);
 		}
 	}
 
+    void StartTurnPartsInstantiate()
+    {
+        for (int i = 0; i < maxNumberOfParts; i++)
+        {
+            GameObject tempPart = Instantiate(playerTurnPart);
+            tempPart.transform.localScale = new Vector3(tempPart.transform.localScale.x * environmentScaler.resolutionFactor, tempPart.transform.localScale.y * environmentScaler.resolutionFactor, tempPart.transform.localScale.z);
+            tempPart.transform.SetParent(Environment.transform);
+            tempPart.SetActive(false);
+            turnParts.Add(tempPart);
+        }
+    }
+
     void AddPart()
     {
-		parts [partIndex].SetActive (true);
-		parts [partIndex].transform.position = spawner;
-		partIndex++;
+		parts [partIndex].transform.localPosition = spawner;
+        parts[partIndex].SetActive(true);
+        partIndex++;
 
-        head.transform.position = spawner;                      // changing head position
+        head.transform.localPosition = spawner;                      // changing head position
         previousPosition = spawner;                             // remember current position which will be 'previous' on the next direction changing
     }
 
 	void Starter(DirectionStates direction) {	// spawning first player part
 
-		spawner = new Vector3 (currentPlatformPosition.x, currentPlatformPosition.y + offset, 0);
+		spawner = new Vector3 (currentPlatformPosition.x, currentPlatformPosition.y + platformOffset - offset, 0);
 
-		parts [partIndex].SetActive (true);
-		parts [partIndex].transform.position = spawner;
-		partIndex++;
+		parts [partIndex].transform.localPosition = spawner;
+        parts[partIndex].SetActive(true);
+        partIndex++;
 
 		previousPosition = spawner;	// remember current position which will be 'previous' on the next direction changing
 		starter = false;			// next part will not be a starter
@@ -405,9 +460,9 @@ public class PlayerController : MonoBehaviour {
 			GiveMeCurrentPart();
 
 			part.GetComponent<PlayerPart> ().PartOrientation = (PlayerPart.Orientation) direction;	// holding direction
-			part.transform.Rotate (0, 0, zRotation);												// rotate to make sprite grow in needed way
+			part.transform.Rotate (0, 0, zRotation);                                                // rotate to make sprite grow in needed way
 
-			// head child settings	
+            // head child settings
 			head.transform.parent = part.transform;
 			head.transform.localRotation = new Quaternion(0, 0, 0, 0);
 			head.transform.localPosition = new Vector3 (0, 1, -1);
@@ -421,11 +476,75 @@ public class PlayerController : MonoBehaviour {
 		}
 	}
 
-	void DeactivatePart() {
+    void PlaceTurnBodyPart(DirectionStates prev, DirectionStates now)
+    {
+        part.transform.localScale = new Vector3(part.transform.localScale.x, part.transform.localScale.y - 1f, part.transform.localScale.z);
+        part.transform.DetachChildren();
+        head.transform.SetParent(Environment.transform);
+        Vector3 turnSpawner = head.transform.localPosition;
+
+        if (prev == DirectionStates.up)
+        {
+            if (now == DirectionStates.right)
+            {
+                turnParts[turnPartIndex].transform.localPosition = new Vector3(turnSpawner.x, turnSpawner.y + offset, turnSpawner.z);
+                turnParts[turnPartIndex].transform.localEulerAngles = new Vector3(0, 0, 90f);
+            }
+            else if (now == DirectionStates.left)
+            {
+                turnParts[turnPartIndex].transform.localPosition = new Vector3(turnSpawner.x, turnSpawner.y + offset, turnSpawner.z);
+                turnParts[turnPartIndex].transform.localEulerAngles = new Vector3(0, 0, 0);
+            }
+        }
+        else if (prev == DirectionStates.down)
+        {
+            if (now == DirectionStates.right)
+            {
+                turnParts[turnPartIndex].transform.localPosition = new Vector3(turnSpawner.x, turnSpawner.y - offset, turnSpawner.z);
+                turnParts[turnPartIndex].transform.localEulerAngles = new Vector3(0, 0, 180f);
+            }
+            else if (now == DirectionStates.left)
+            {
+                turnParts[turnPartIndex].transform.localPosition = new Vector3(turnSpawner.x, turnSpawner.y - offset, turnSpawner.z);
+                turnParts[turnPartIndex].transform.localEulerAngles = new Vector3(0, 0, 270f);
+            }
+        }
+        else if (prev == DirectionStates.left)
+        {
+            if (now == DirectionStates.up)
+            {
+                turnParts[turnPartIndex].transform.localPosition = new Vector3(turnSpawner.x - offset, turnSpawner.y, turnSpawner.z);
+                turnParts[turnPartIndex].transform.localEulerAngles = new Vector3(0, 0, 180f);
+            }
+            else if(now == DirectionStates.down)
+            {
+                turnParts[turnPartIndex].transform.localPosition = new Vector3(turnSpawner.x - offset, turnSpawner.y, turnSpawner.z);
+                turnParts[turnPartIndex].transform.localEulerAngles = new Vector3(0, 0, 90f);
+            }
+        }
+        else if (prev == DirectionStates.right)
+        {
+            if (now == DirectionStates.up)
+            {
+                turnParts[turnPartIndex].transform.localPosition = new Vector3(turnSpawner.x + offset, turnSpawner.y, turnSpawner.z);
+                turnParts[turnPartIndex].transform.localEulerAngles = new Vector3(0, 0, 270f);
+            }
+            else if (now == DirectionStates.down)
+            {
+                turnParts[turnPartIndex].transform.localPosition = new Vector3(turnSpawner.x + offset, turnSpawner.y, turnSpawner.z);
+                turnParts[turnPartIndex].transform.localEulerAngles = new Vector3(0, 0, 0f);
+            }
+        }
+
+        turnParts[turnPartIndex].SetActive(true);
+        turnPartIndex++;
+    }
+
+    void DeactivatePart() {
 		part.SetActive (false);
 		part.transform.localScale = new Vector3 (1, 1, 1);
 		part.transform.localRotation = new Quaternion (0, 0, 0, 0);
-		part.transform.position = new Vector3 (0, 0, 0);
+		part.transform.localPosition = new Vector3 (0, 0, 0);
 	}
 
 	void GiveMeCurrentPart() {
@@ -441,8 +560,8 @@ public class PlayerController : MonoBehaviour {
 	}
 
 	void ResetHeadTransform(float xPos, float yPos) {	// resets head trannsform for needed platform
-
-		head.transform.position = new Vector3 (xPos, yPos + 2 * offset, -1);
+        head.transform.SetParent(Environment.transform);
+		head.transform.localPosition = new Vector3 (xPos, yPos + platformOffset, -1);
 		head.transform.localRotation = new Quaternion(0, 0, 0, 0);
 		head.transform.localScale = new Vector3 (1, 1, head.transform.localScale.z);
 	}
@@ -458,10 +577,11 @@ public class PlayerController : MonoBehaviour {
 			StopCoroutine (lastRoutine);
 		}
 
-		if (!reverseCoroutineIsOn && part != null) {					// if some other coroutine is not running
-			
+		if (!reverseCoroutineIsOn && part != null) {                    // if some other coroutine is not running
+
+            turnPartIndex--;
 			reverseCoroutineIsOn = true;				// while true we can't spawn new parts or change direction
-			StartCoroutine (MovePlayerReverse (part));		// start moving in reverse way
+			lastRoutine = StartCoroutine (MovePlayerReverse (part));		// start moving in reverse way
 		} else {
 			if (part == null) {		// if head is still on the platform
 
@@ -470,7 +590,14 @@ public class PlayerController : MonoBehaviour {
 		}
 	}
 
-	public void VictoryHappened() {		// if we collide with our target, we need to make player change the platform
+	public void GoNextPlatform(Vector2 next, bool isMiddlePlatform) {		// if we collide with our target, we need to make player change the platform
+
+        if (isMiddlePlatform)
+            middlePlatform = true;
+        else
+            middlePlatform = false;
+
+        nextPlatformPosition = next;
 
 		GiveMeFirstPart ();
 		tempPartIndex = 0;
@@ -481,8 +608,8 @@ public class PlayerController : MonoBehaviour {
 
 		if (!reverseCoroutineIsOn) {					// if some other coroutine is not running
 
-			reverseCoroutineIsOn = true;				// while true we can't spawn new parts or change direction
-			StartCoroutine (MovePlayerToNextPlatform (part));	// start moving to the next platform
+			reverseCoroutineIsOn = true;                // while true we can't spawn new parts or change direction
+            lastRoutine = StartCoroutine(MovePlayerToNextPlatform (part));	// start moving to the next platform
 		}
 	}
 
@@ -490,6 +617,45 @@ public class PlayerController : MonoBehaviour {
 
 		currentNumberOfParts += number;
 	}
+
+    public void SetStartGame()
+    {
+        startGame = false;
+    }
+
+    public void MovePlayerToStart()
+    {
+        if (lastRoutine != null)
+            StopCoroutine(lastRoutine);
+
+        GiveMeCurrentPart();
+
+        if (part != null)
+        {
+            part.transform.DetachChildren();
+
+            for (int i = 0; i < currentNumberOfParts; i++)
+            {
+                parts[i].SetActive(false);
+                parts[i].transform.localScale = new Vector3(1, 1, 1);
+                parts[i].transform.localRotation = new Quaternion(0, 0, 0, 0);
+                parts[i].transform.localPosition = new Vector3(0, 0, 0);
+            }
+
+            for (int i = 0; i < currentNumberOfParts; i++)
+                turnParts[i].SetActive(false);
+        }
+
+        head.transform.SetParent(Environment.transform);
+        head.transform.localRotation = new Quaternion(0, 0, 0, 0);
+        head.transform.localPosition = new Vector3(startPlatformPosition.x, startPlatformPosition.y + platformOffset, -1);
+        gameplayController.moving = false;
+
+        currentPlatformPosition = startPlatformPosition;
+
+        gameplayController.StageRestart();  // restart the stage when collision happened
+        OnRestart();                        // restart player
+    }
 
 
 	// iterators
@@ -508,7 +674,7 @@ public class PlayerController : MonoBehaviour {
 
 			part.transform.DetachChildren ();			// unchild head to scale body part without scaling the head and then child head again
 			part.transform.localScale = new Vector3 (part.transform.localScale.x, part.transform.localScale.y + speed * Time.deltaTime, part.transform.localScale.z);
-			head.transform.localScale = new Vector3 (1, 1, head.transform.localScale.z);	// keeping head same size
+			head.transform.localScale = new Vector3 (environmentScaler.resolutionFactor, environmentScaler.resolutionFactor, head.transform.localScale.z);	// keeping head same size
 			head.transform.parent = part.transform;		// now head is a child of part
 
 			head.transform.localRotation = new Quaternion(0, 0, 0, 0);			// preventing head from rotation
@@ -530,12 +696,15 @@ public class PlayerController : MonoBehaviour {
 
 			part.transform.DetachChildren ();		// unchild head to scale body part without scaling the head and then child head again
 			part.transform.localScale = new Vector3 (part.transform.localScale.x, part.transform.localScale.y - secondSpeed * Time.deltaTime, part.transform.localScale.z);
-			head.transform.localScale = new Vector3 (1, 1, head.transform.localScale.z);
+			head.transform.localScale = new Vector3 (environmentScaler.resolutionFactor, environmentScaler.resolutionFactor, head.transform.localScale.z);
 			head.transform.parent = part.transform;	// now head is a child of part
 
 			head.transform.localRotation = new Quaternion(0, 0, 0, 0);	// preventing head from rotation
 			head.transform.localPosition = new Vector3 (0, 1, -1);		// y local position of the head is allways 1
 		}
+
+        if (turnPartIndex >= 0)
+            turnParts[turnPartIndex--].SetActive(false);
 			
 		// unchilding head
 		part.transform.DetachChildren ();
@@ -543,7 +712,7 @@ public class PlayerController : MonoBehaviour {
 		part.SetActive (false);
 		part.transform.localScale = new Vector3 (1, 1, 1);
 		part.transform.localRotation = new Quaternion (0, 0, 0, 0);
-		part.transform.position = new Vector3 (0, 0, 0);
+		part.transform.localPosition = new Vector3 (0, 0, 0);
 
 		partIndex--;
 
@@ -556,13 +725,21 @@ public class PlayerController : MonoBehaviour {
 			head.transform.localRotation = new Quaternion(0, 0, 0, 0);
 			head.transform.localPosition = new Vector3 (0, 1, -1);
 
-			StartCoroutine (MovePlayerReverse (part));
+            lastRoutine = StartCoroutine(MovePlayerReverse (part));
 		} else {
 			
 			ResetHeadTransform (currentPlatformPosition.x, currentPlatformPosition.y);
-			gameplayController.StageRestart ();	// restart the stage when collision happened
 			gameplayController.moving = false;	// we are not moving 
-			OnRestart ();						// restart player
+            if (middlePlatform)
+            {
+                OnFakeRestart();
+                // gameplayController.UnsetFakeReset();
+            }
+            else
+            {
+                gameplayController.StageRestart();	// restart the stage when collision happened
+                OnRestart();                        // restart player
+            }
 		}
 	}
 
@@ -574,22 +751,22 @@ public class PlayerController : MonoBehaviour {
 
 		case PlayerPart.Orientation.right:
 			
-			part.transform.position = new Vector3 (part.transform.position.x + part.transform.localScale.y, part.transform.position.y, part.transform.position.z);
+			part.transform.localPosition = new Vector3 (part.transform.localPosition.x + part.transform.localScale.y, part.transform.localPosition.y, part.transform.localPosition.z);
 			break;
 
 		case PlayerPart.Orientation.left:
 			
-			part.transform.position = new Vector3 (part.transform.position.x - part.transform.localScale.y, part.transform.position.y, part.transform.position.z);
+			part.transform.localPosition = new Vector3 (part.transform.localPosition.x - part.transform.localScale.y, part.transform.localPosition.y, part.transform.localPosition.z);
 			break;
 
 		case PlayerPart.Orientation.up:
 			
-			part.transform.position = new Vector3 (part.transform.position.x, part.transform.position.y + part.transform.localScale.y, part.transform.position.z);
+			part.transform.localPosition = new Vector3 (part.transform.localPosition.x, part.transform.localPosition.y + part.transform.localScale.y, part.transform.localPosition.z);
 			break;
 
 		case PlayerPart.Orientation.down:
 			
-			part.transform.position = new Vector3 (part.transform.position.x, part.transform.position.y - part.transform.localScale.y, part.transform.position.z);
+			part.transform.localPosition = new Vector3 (part.transform.localPosition.x, part.transform.localPosition.y - part.transform.localScale.y, part.transform.localPosition.z);
 			break;
 		}
 
@@ -606,10 +783,12 @@ public class PlayerController : MonoBehaviour {
 			part.transform.localScale = new Vector3 (part.transform.localScale.x, part.transform.localScale.y - secondSpeed * Time.deltaTime, part.transform.localScale.z);
 		}
 
-		part.SetActive (false);
+        turnParts[tempPartIndex].SetActive(false);
+
+        part.SetActive (false);
 		part.transform.localScale = new Vector3 (1, 1, 1);
 		part.transform.localRotation = new Quaternion (0, 0, 0, 0);
-		part.transform.position = new Vector3 (0, 0, 0);
+		part.transform.localPosition = new Vector3 (0, 0, 0);
 
 		tempPartIndex++;
 
@@ -623,17 +802,22 @@ public class PlayerController : MonoBehaviour {
 				StartCoroutine (fadePanel.GetComponent<FadeController> ().FadeInPanel (1f / part.transform.localScale.y, new Color (1f, 0.4f, 0f, 0f)));
 			}
 
-			StartCoroutine (MovePlayerToNextPlatform (part));
+            lastRoutine = StartCoroutine(MovePlayerToNextPlatform (part));
 		} else {
 			
 			// unchilding head
 			part.transform.DetachChildren ();	// SetActive() works at the end of frame, so we still able to get this part
 
-			ResetHeadTransform (nextPlatformPosition [platformCounter].x, nextPlatformPosition [platformCounter].y);
-			currentPlatformPosition = nextPlatformPosition [platformCounter++];		// we reached the target, so our next platform becomes our current platform
-			gameplayController.NextStage ();
+			ResetHeadTransform (nextPlatformPosition.x, nextPlatformPosition.y);
+			currentPlatformPosition = nextPlatformPosition;		// we reached the target, so our next platform becomes our current platform
 			gameplayController.moving = false;
-			OnRestart ();
+            if (middlePlatform)
+                OnFakeRestart();
+            else
+            {
+                startPlatformPosition = currentPlatformPosition;
+                OnRestart();
+            }
 		}
 	}
 }

@@ -43,9 +43,17 @@ public class Stage : MonoBehaviour {
 		return lives;
 	}
 
-	public void BeginMovingObstacles()
+	/* public void BeginMovingObstacles()
 	{
-		foreach (var item in movingObstacles)
-			item.GetComponent<MovingObstacle> ().onPause = false;
-	}
+        foreach (var item in movingObstacles)
+            item.GetComponent<MovingObstacle>().StartMoving();
+	} */
+
+    public void StopMovingObstacles()
+    {
+        foreach (var item in movingObstacles)
+        {
+            if (item) item.GetComponent<MovingObstacle>().StopMoving();
+        }
+    }
 }

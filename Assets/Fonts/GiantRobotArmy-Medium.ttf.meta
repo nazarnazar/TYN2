@@ -1,0 +1,21 @@
+fileFormatVersion: 2
+guid: 6552fad4b12ab3846ac271b07705dbfb
+timeCreated: 1498318411
+licenseType: Free
+TrueTypeFontImporter:
+  serializedVersion: 4
+  fontSize: 16
+  forceTextureCase: -2
+  characterSpacing: 0
+  characterPadding: 1
+  includeFontData: 1
+  fontName: GiantRobotArmy
+  fontNames:
+  - GiantRobotArmy
+  fallbackFontReferences: []
+  customCharacters: 
+  fontRenderingMode: 0
+  ascentCalculationMode: 1
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

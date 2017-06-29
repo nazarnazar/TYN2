@@ -11,10 +11,15 @@ using UnityEngine;
 
 public class CameraController : MonoBehaviour {
 
+    public EnvironmentScaler es;
 	public float speed;
 	public int timesWeChangeLevel;
 	public float distance;			// distance to move the camera
 
+    void Start()
+    {
+        distance *= es.resolutionFactor;
+    }
 
 	public void MoveCamera()
 	{

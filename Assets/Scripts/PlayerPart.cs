@@ -17,7 +17,7 @@ public class PlayerPart : MonoBehaviour {
 	CameraController cameraController;	// object to set camera position to the next target
 	PlayerController playerController;
 
-	public enum Orientation : byte
+    public enum Orientation : byte
 	{
 		right,
 		left,
@@ -42,49 +42,72 @@ public class PlayerPart : MonoBehaviour {
 
 	void OnTriggerEnter2D(Collider2D trigger)
 	{
-		// Debug.Log ("Trigger");
+        // Debug.Log ("Trigger");
 
-		switch (trigger.gameObject.tag)			// decide what to do, depending on what we have triggered
-		{
-			case "Obstacle": 
-				
-				print ("Minus life!");
-				gameplayController.MinusLife ();
-				gameplayController.moving = true;
-				trigger.attachedRigidbody.AddForce (new Vector2 (-trigger.attachedRigidbody.velocity.x * obstacleForce, -trigger.attachedRigidbody.velocity.y * obstacleForce));
-				playerController.CollisionHappened ();
-				break;
+        switch (trigger.gameObject.tag)         // decide what to do, depending on what we have triggered
+        {
+            case "Platform":
 
-			case "Target":
-				
-				print ("Stage Completed!");
-				trigger.gameObject.SetActive (false);
-				gameplayController.moving = true;
-				playerController.VictoryHappened ();
-				cameraController.MoveCamera ();
-				break;
+                print("Changed platform!");
+                if (!gameplayController.moving)
+                {
+                    gameplayController.moving = true;
+                    playerController.GoNextPlatform(new Vector2(trigger.gameObject.transform.localPosition.x, trigger.gameObject.transform.localPosition.y + 0.25f), true);
+                }
+                break;
 
-			case "DirectionBonus":
+            case "Obstacle":
 
-				print ("Direction Bonus!");
-				playerController.PartsBouns (trigger.gameObject.GetComponent<DirectionBonus> ().directionsToAdd);
-				trigger.gameObject.SetActive (false);
-				break;
+                print("Minus life!");
 
-			case "TimeBonus":
+                gameplayController.moving = true;
+                gameplayController.MinusLife();
+                trigger.attachedRigidbody.AddForce(new Vector2(-trigger.attachedRigidbody.velocity.x * obstacleForce, -trigger.attachedRigidbody.velocity.y * obstacleForce));
+                break;
 
-				print ("Time Bonus!");
-				gameplayController.AddTime (trigger.gameObject.GetComponent<TimeBonus> ().timeToAdd);
-				trigger.gameObject.SetActive (false);
-				break;
+            case "Target":
 
-			default: 
+                print("Stage Completed!");
 
-				gameplayController.SetFakeReset ();
-				gameplayController.moving = true;
-				playerController.CollisionHappened ();
-				break;
-		}
+                trigger.gameObject.SetActive(false);
+                gameplayController.moving = true;
+                playerController.GoNextPlatform(new Vector2(trigger.gameObject.transform.localPosition.x, trigger.gameObject.transform.localPosition.y - 1f), false);
+                gameplayController.NextStage();
+                cameraController.MoveCamera();
+                break;
+
+            case "DirectionBonus":
+
+                print("Direction Bonus!");
+
+                if (!gameplayController.moving)
+                {
+                    playerController.PartsBouns(trigger.gameObject.GetComponent<DirectionBonus>().directionsToAdd);
+                    trigger.gameObject.SetActive(false);
+                }
+                break;
+
+            case "TimeBonus":
+
+                print("Time Bonus!");
+
+                if (!gameplayController.moving)
+                {
+                    gameplayController.AddTime(trigger.gameObject.GetComponent<TimeBonus>().timeToAdd);
+                    trigger.gameObject.SetActive(false);
+                }
+                break;
+
+            default:
+
+                if (!gameplayController.moving)
+                {
+                    gameplayController.SetFakeReset();
+                    gameplayController.moving = true;
+                    playerController.CollisionHappened();
+                }
+                break;
+        }
 	}
 
 	void OnCollisionEnter2D(Collision2D collision)
