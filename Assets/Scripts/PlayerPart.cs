@@ -99,7 +99,7 @@ public class PlayerPart : MonoBehaviour {
                 break;
 
             default:
-
+                Debug.Break();
                 if (!gameplayController.moving)
                 {
                     gameplayController.SetFakeReset();

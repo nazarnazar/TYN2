@@ -20,3 +20,6 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/_Scenes/Nazar.unity
     guid: 9fe5d4ffae0cf574aa8b421b40d7e5d8
+  - enabled: 1
+    path: Assets/_Scenes/Tutorials/Tutorial 1.unity
+    guid: 00000000000000000000000000000000

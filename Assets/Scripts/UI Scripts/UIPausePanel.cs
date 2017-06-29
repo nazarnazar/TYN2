@@ -16,10 +16,10 @@ public class UIPausePanel : MonoBehaviour {
     RectTransform rt;
 
 
-	void Start ()
+    void Start()
     {
         rt = GetComponent<RectTransform>();
-	}
+    }
 
     public void MovePanelIn()
     {
